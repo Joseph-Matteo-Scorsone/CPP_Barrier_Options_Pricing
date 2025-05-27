@@ -31,3 +31,7 @@ Each option is defined by the following parameters:
 - `OptionType`: Call or Put
 - `BarrierType`: UpAndOut, DownAndOut, UpAndIn, DownAndIn
 - `rebate`: Amount paid if knocked out (default is 0)
+
+Relevant papers
+- https://people.maths.ox.ac.uk/howison/barriers.pdf
+- https://arxiv.org/pdf/cond-mat/0211489
