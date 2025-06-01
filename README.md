@@ -2,7 +2,7 @@
 
 This project implements a pricing engine for **barrier options** using the Black-Scholes model in C++.
 
-## 📘 Features
+## Features
 
 - Supports four types of barrier options:
   - Up-and-Out
@@ -13,11 +13,11 @@ This project implements a pricing engine for **barrier options** using the Black
 - Partial support for rebate payouts upon knockout.
 - Uses analytical formulas for barrier option pricing (where implemented).
 
-## 📈 Barrier Options
+## Barrier Options
 
 Barrier options are exotic options where the payoff depends on whether the underlying asset reaches a certain barrier level during the option's life.
 
-## 🔧 Parameters
+## Parameters
 
 Each option is defined by the following parameters:
 
