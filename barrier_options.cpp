@@ -72,90 +72,159 @@ private:
         return 0.5 * std::erfc(-x / std::sqrt(2));
     }
 
-    // Pricing for up-and-out call option
+    // Pricing for up-and-out options (both calls and puts)
     double _price_up_and_out() const {
+        double lambda = (r - q + 0.5 * sigma * sigma) / (sigma * sigma);
+        double z = std::log(H / S) / (sigma * std::sqrt(T)) + lambda * sigma * std::sqrt(T);
+        double x1 = std::log(S / K) / (sigma * std::sqrt(T)) + lambda * sigma * std::sqrt(T);
+        double y1 = std::log(H * H / (S * K)) / (sigma * std::sqrt(T)) + lambda * sigma * std::sqrt(T);
+
         if (type == OptionType::Call) {
             if (K >= H) {
                 // Immediately knocked out
                 return rebate * std::exp(-r * T);
             }
 
-            double lambda = (r - q + 0.5 * sigma * sigma) / (sigma * sigma);
-            double z = std::log(H / S) / (sigma * std::sqrt(T)) + lambda * sigma * std::sqrt(T);
-            double x1 = std::log(S / K) / (sigma * std::sqrt(T)) + lambda * sigma * std::sqrt(T);
-            double y1 = std::log(H * H / (S * K)) / (sigma * std::sqrt(T)) + lambda * sigma * std::sqrt(T);
-
-            // Core pricing components
+            // Core pricing components for up-and-out call
             double A = S * std::exp(-q * T) * norm_cdf(x1) - K * std::exp(-r * T) * norm_cdf(x1 - sigma * std::sqrt(T));
             double B = S * std::exp(-q * T) * std::pow(H / S, 2 * lambda) * (norm_cdf(y1) - norm_cdf(z));
             double C = K * std::exp(-r * T) * std::pow(H / S, 2 * lambda - 2) * (norm_cdf(y1 - sigma * std::sqrt(T)) - norm_cdf(z - sigma * std::sqrt(T)));
 
             double knockOutPrice = A - B + C;
             return std::max(knockOutPrice, 0.0) + rebate * std::exp(-r * T);
-        } else {
-            throw std::runtime_error("Up-and-out puts not implemented");
+        } else { // Put option
+            if (K <= H) {
+                // Strike below barrier - option worthless
+                return rebate * std::exp(-r * T);
+            }
+
+            // Core pricing components for up-and-out put
+            double A = K * std::exp(-r * T) * norm_cdf(-x1 + sigma * std::sqrt(T)) - S * std::exp(-q * T) * norm_cdf(-x1);
+            double B = K * std::exp(-r * T) * std::pow(H / S, 2 * lambda - 2) * norm_cdf(-y1 + sigma * std::sqrt(T));
+            double C = S * std::exp(-q * T) * std::pow(H / S, 2 * lambda) * norm_cdf(-y1);
+
+            double knockOutPrice = A - B + C;
+            return std::max(knockOutPrice, 0.0) + rebate * std::exp(-r * T);
         }
     }
 
-    // Pricing for down-and-out put option
+    // Pricing for down-and-out options (both calls and puts)
     double _price_down_and_out() const {
+        double lambda = (r - q + 0.5 * sigma * sigma) / (sigma * sigma);
+        double z = std::log(H / S) / (sigma * std::sqrt(T)) + lambda * sigma * std::sqrt(T);
+        double x1 = std::log(S / K) / (sigma * std::sqrt(T)) + lambda * sigma * std::sqrt(T);
+        double y1 = std::log(H * H / (S * K)) / (sigma * std::sqrt(T)) + lambda * sigma * std::sqrt(T);
+
         if (type == OptionType::Put) {
             if (K <= H) {
                 // Immediately knocked out
                 return rebate * std::exp(-r * T);
             }
 
-            double lambda = (r - q + 0.5 * sigma * sigma) / (sigma * sigma);
-            double z = std::log(H / S) / (sigma * std::sqrt(T)) + lambda * sigma * std::sqrt(T);
-            double x1 = std::log(S / K) / (sigma * std::sqrt(T)) + lambda * sigma * std::sqrt(T);
-            double y1 = std::log(H * H / (S * K)) / (sigma * std::sqrt(T)) + lambda * sigma * std::sqrt(T);
-
-            // Core pricing components
+            // Core pricing components for down-and-out put
             double A = K * std::exp(-r * T) * norm_cdf(-x1 + sigma * std::sqrt(T)) - S * std::exp(-q * T) * norm_cdf(-x1);
             double B = K * std::exp(-r * T) * std::pow(H / S, 2 * lambda - 2) * (norm_cdf(-y1 + sigma * std::sqrt(T)) - norm_cdf(-z + sigma * std::sqrt(T)));
             double C = S * std::exp(-q * T) * std::pow(H / S, 2 * lambda) * (norm_cdf(-y1) - norm_cdf(-z));
 
             double knockOutPrice = A - B + C;
             return std::max(knockOutPrice, 0.0) + rebate * std::exp(-r * T);
-        } else {
-            throw std::runtime_error("Down-and-out calls not implemented");
+        } else { // Call option
+            if (K >= H) {
+                // Strike above barrier - option worthless
+                return rebate * std::exp(-r * T);
+            }
+
+            // Core pricing components for down-and-out call
+            double A = S * std::exp(-q * T) * norm_cdf(x1) - K * std::exp(-r * T) * norm_cdf(x1 - sigma * std::sqrt(T));
+            double B = S * std::exp(-q * T) * std::pow(H / S, 2 * lambda) * norm_cdf(y1);
+            double C = K * std::exp(-r * T) * std::pow(H / S, 2 * lambda - 2) * norm_cdf(y1 - sigma * std::sqrt(T));
+
+            double knockOutPrice = A - B + C;
+            return std::max(knockOutPrice, 0.0) + rebate * std::exp(-r * T);
         }
     }
 };
 
 int main() {
     try {
-        // Define and price different types of barrier options
+        
+        // Up-and-Out Call
         BarrierOption upOutCall(100, 95, 120, 0.05, 0.02, 0.2, 1.0,
             BarrierOption::OptionType::Call,
             BarrierOption::BarrierType::UpAndOut,
             2.0);
 
+        // Up-and-In Call
         BarrierOption upInCall(100, 95, 120, 0.05, 0.02, 0.2, 1.0,
             BarrierOption::OptionType::Call,
             BarrierOption::BarrierType::UpAndIn,
             2.0);
 
+        // Up-and-Out Put
+        BarrierOption upOutPut(100, 105, 120, 0.05, 0.02, 0.2, 1.0,
+            BarrierOption::OptionType::Put,
+            BarrierOption::BarrierType::UpAndOut,
+            1.5);
+
+        // Up-and-In Put
+        BarrierOption upInPut(100, 105, 120, 0.05, 0.02, 0.2, 1.0,
+            BarrierOption::OptionType::Put,
+            BarrierOption::BarrierType::UpAndIn,
+            1.5);
+
+        // Down-and-Out Put
         BarrierOption downOutPut(100, 105, 80, 0.05, 0.02, 0.2, 1.0,
             BarrierOption::OptionType::Put,
             BarrierOption::BarrierType::DownAndOut,
             1.5);
 
+        // Down-and-In Put
         BarrierOption downInPut(100, 105, 80, 0.05, 0.02, 0.2, 1.0,
             BarrierOption::OptionType::Put,
             BarrierOption::BarrierType::DownAndIn,
             1.5);
 
-        // Output results
-        std::cout << "Vanilla Call Price: " << upOutCall.priceVanillaCall() << "\n";
-        std::cout << "Up-and-Out Call Price: " << upOutCall.price() << "\n";
-        std::cout << "Up-and-In Call Price: " << upInCall.price() << "\n\n";
+        // Down-and-Out Call
+        BarrierOption downOutCall(100, 95, 80, 0.05, 0.02, 0.2, 1.0,
+            BarrierOption::OptionType::Call,
+            BarrierOption::BarrierType::DownAndOut,
+            2.0);
 
+        // Down-and-In Call
+        BarrierOption downInCall(100, 95, 80, 0.05, 0.02, 0.2, 1.0,
+            BarrierOption::OptionType::Call,
+            BarrierOption::BarrierType::DownAndIn,
+            2.0);
+
+        // Output results
+        std::cout << "=== CALL OPTIONS ===\n";
+        std::cout << "Vanilla Call Price: " << upOutCall.priceVanillaCall() << "\n";
+        std::cout << "Up-and-Out Call: " << upOutCall.price() << "\n";
+        std::cout << "Up-and-In Call: " << upInCall.price() << "\n";
+        std::cout << "Down-and-Out Call: " << downOutCall.price() << "\n";
+        std::cout << "Down-and-In Call: " << downInCall.price() << "\n\n";
+
+        std::cout << "=== PUT OPTIONS ===\n";
         std::cout << "Vanilla Put Price: " << downOutPut.priceVanillaPut() << "\n";
-        std::cout << "Down-and-Out Put Price: " << downOutPut.price() << "\n";
-        std::cout << "Down-and-In Put Price: " << downInPut.price() << "\n";
+        std::cout << "Up-and-Out Put: " << upOutPut.price() << "\n";
+        std::cout << "Up-and-In Put: " << upInPut.price() << "\n";
+        std::cout << "Down-and-Out Put: " << downOutPut.price() << "\n";
+        std::cout << "Down-and-In Put: " << downInPut.price() << "\n\n";
+
+        // In + Out should equal Vanilla
+        std::cout << "==================\n";
+        std::cout << "Call: Up-In + Up-Out = " << upInCall.price() + upOutCall.price() 
+                  << " vs Vanilla = " << upOutCall.priceVanillaCall() << "\n";
+        std::cout << "Call: Down-In + Down-Out = " << downInCall.price() + downOutCall.price() 
+                  << " vs Vanilla = " << downOutCall.priceVanillaCall() << "\n";
+        std::cout << "Put: Up-In + Up-Out = " << upInPut.price() + upOutPut.price() 
+                  << " vs Vanilla = " << upOutPut.priceVanillaPut() << "\n";
+        std::cout << "Put: Down-In + Down-Out = " << downInPut.price() + downOutPut.price() 
+                  << " vs Vanilla = " << downInPut.priceVanillaPut() << "\n";
 
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << "\n";
     }
+
+    return 0;
 }
